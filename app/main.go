@@ -24,7 +24,7 @@ func respondToMessage(message DNSMessage) DNSMessage {
 	var response DNSMessage = DNSMessage{
 		Header: responseHeader,
 		Question: DNSQuestion{
-			Name:  domaintoName("codecrafter.io"),
+			Name:  domaintoName("codecrafters.io"),
 			Type:  1,
 			Class: 1,
 		},
