@@ -7,7 +7,7 @@ import (
 
 func respondToMessage(message DNSMessage) DNSMessage {
 	var responseHeader DNSHeader = DNSHeader{
-		id:               message.header.id,
+		id:               message.Header.id,
 		isReply:          true,
 		opCode:           0,
 		authoritative:    false,
@@ -16,14 +16,18 @@ func respondToMessage(message DNSMessage) DNSMessage {
 		recursionAvail:   false,
 		reserved:         0,
 		responseCode:     0,
-		questionCount:    0,
+		questionCount:    1,
 		answerCount:      0,
 		authCount:        0,
 		additonalCount:   0,
 	}
 	var response DNSMessage = DNSMessage{
-		header:   responseHeader,
-		contents: "",
+		Header: responseHeader,
+		Question: DNSQuestion{
+			Name:  domaintoName("codecrafter.io"),
+			Type:  1,
+			Class: 1,
+		},
 	}
 
 	return response
@@ -50,14 +54,13 @@ func main() {
 			fmt.Println("Error receiving data:", err)
 			break
 		}
-		
+
 		receivedData := buf[:size]
 		fmt.Printf("Received %d bytes from %s: %s\n", size, source, string(receivedData))
 		receivedMessage := messageFromBytes(receivedData)
 		messageBack := respondToMessage(receivedMessage)
 
-		fmt.Println(messageBack.header.String())
-		
+		fmt.Println(messageBack.Header.String())
 
 		response := messageBack.ToByteArray()
 		_, err = udpConn.WriteToUDP(response, source)

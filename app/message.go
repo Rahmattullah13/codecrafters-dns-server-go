@@ -1,8 +1,11 @@
 package main
+
 import (
 	"encoding/binary"
 	"fmt"
+	"strings"
 )
+
 type DNSHeader struct {
 	id               uint16 //16 bits - the random id of query/reply
 	isReply          bool   //1 bit  - true if reply false if query
@@ -19,6 +22,7 @@ type DNSHeader struct {
 	additonalCount   uint16 //16 bits
 
 }
+
 func headerFromBytes(headerBytes []byte) DNSHeader {
 	var id, flags, qCount, ansCount, auCount, adCount uint16
 	id = binary.BigEndian.Uint16(headerBytes[0:2])
@@ -27,6 +31,7 @@ func headerFromBytes(headerBytes []byte) DNSHeader {
 	ansCount = binary.BigEndian.Uint16(headerBytes[6:8])
 	auCount = binary.BigEndian.Uint16(headerBytes[8:10])
 	adCount = binary.BigEndian.Uint16(headerBytes[10:12])
+
 	return DNSHeader{
 		id:               id,
 		isReply:          (flags & 0x01) != 0,
@@ -41,18 +46,41 @@ func headerFromBytes(headerBytes []byte) DNSHeader {
 		answerCount:      ansCount,
 		authCount:        auCount,
 		additonalCount:   adCount,
-
 	}
 }
-type DNSMessage struct {
-	header   DNSHeader
-	contents string
+
+type DNSQuestion struct {
+	Name  []byte
+	Type  uint16
+	Class uint16
 }
+
+func questionFromDomain(domain string) DNSQuestion {
+	return DNSQuestion{}
+}
+
+func domaintoName(domain string) []byte {
+	labels := strings.Split(domain, ".")
+	name := []byte{}
+
+	for _, label := range labels {
+		name = append(name, byte(len(label)))
+		name = append(name, label...)
+	}
+	name = append(name, 0x00)
+
+	return name
+}
+
+type DNSMessage struct {
+	Header   DNSHeader
+	Question DNSQuestion
+}
+
 func messageFromBytes(message []byte) DNSMessage {
 	return DNSMessage{
-		header:   headerFromBytes(message[0:12]),
-		contents: string(message[12:]),
-
+		Header:   headerFromBytes(message[0:12]),
+		Question: DNSQuestion{},
 	}
 }
 func BoolToInt(b bool) uint16 {
@@ -93,7 +121,6 @@ func (header DNSHeader) String() string {
 		header.answerCount,
 		header.authCount,
 		header.additonalCount,
-
 	)
 }
 func (header DNSHeader) ToByteArray() []byte {
@@ -108,9 +135,19 @@ func (header DNSHeader) ToByteArray() []byte {
 
 	return headerBytes
 }
+
+func (question DNSQuestion) ToByteArray() []byte {
+	questionBytes := make([]byte, 4)
+
+	binary.BigEndian.PutUint16(questionBytes[:2], question.Type)
+	binary.BigEndian.PutUint16(questionBytes[2:4], question.Class)
+
+	return append(question.Name, questionBytes...)
+}
+
 func (message DNSMessage) ToByteArray() []byte {
-	headerBytes := message.header.ToByteArray()
-	contentBytes := []byte{}
+	headerBytes := message.Header.ToByteArray()
+	contentBytes := message.Question.ToByteArray()
 
 	return append(headerBytes, contentBytes...)
 }
