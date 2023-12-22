@@ -17,17 +17,21 @@ func respondToMessage(message DNSMessage) DNSMessage {
 		reserved:         0,
 		responseCode:     0,
 		questionCount:    1,
-		answerCount:      0,
+		answerCount:      1,
 		authCount:        0,
 		additonalCount:   0,
 	}
+
+	question := DNSQuestion{
+		Name:  domaintoName("codecrafters.io"),
+		Type:  1,
+		Class: 1,
+	}
+
 	var response DNSMessage = DNSMessage{
-		Header: responseHeader,
-		Question: DNSQuestion{
-			Name:  domaintoName("codecrafters.io"),
-			Type:  1,
-			Class: 1,
-		},
+		Header:    responseHeader,
+		Questions: []DNSQuestion{question},
+		Answers:   []DNSRecord{answerToQuestion(question, []byte{0x08, 0x08, 0x08, 0x08}, 4, 60)},
 	}
 
 	return response

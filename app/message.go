@@ -55,8 +55,21 @@ type DNSQuestion struct {
 	Class uint16
 }
 
-func questionFromDomain(domain string) DNSQuestion {
-	return DNSQuestion{}
+type DNSRecord struct {
+	Question   DNSQuestion
+	TimeToLive uint32
+	Length     uint16
+	Data       []byte
+}
+
+
+func answerToQuestion(question DNSQuestion, data []byte, length uint16, ttl uint32) DNSRecord {
+	return DNSRecord{
+		Question:   question,
+		TimeToLive: ttl,
+		Length:     length,
+		Data:       data,
+	}
 }
 
 func domaintoName(domain string) []byte {
@@ -73,14 +86,16 @@ func domaintoName(domain string) []byte {
 }
 
 type DNSMessage struct {
-	Header   DNSHeader
-	Question DNSQuestion
+	Header    DNSHeader
+	Questions []DNSQuestion
+	Answers   []DNSRecord
 }
 
 func messageFromBytes(message []byte) DNSMessage {
 	return DNSMessage{
-		Header:   headerFromBytes(message[0:12]),
-		Question: DNSQuestion{},
+		Header:    headerFromBytes(message[0:12]),
+		Questions: []DNSQuestion{},
+		Answers:   []DNSRecord{},
 	}
 }
 func BoolToInt(b bool) uint16 {
@@ -145,9 +160,28 @@ func (question DNSQuestion) ToByteArray() []byte {
 	return append(question.Name, questionBytes...)
 }
 
+func (record DNSRecord) ToByteArray() []byte {
+	recordBytes := make([]byte, 6)
+
+	binary.BigEndian.PutUint32(recordBytes[:4], record.TimeToLive)
+	binary.BigEndian.PutUint16(recordBytes[4:6], record.Length)
+
+	recordBytes = append(recordBytes, record.Data...)
+
+	return append(record.Question.ToByteArray(), recordBytes...)
+}
+
 func (message DNSMessage) ToByteArray() []byte {
 	headerBytes := message.Header.ToByteArray()
-	contentBytes := message.Question.ToByteArray()
+	contentBytes := []byte{}
+
+	for _, question := range message.Questions {
+		contentBytes = append(contentBytes, question.ToByteArray()...)
+	}
+
+	for _, answer := range message.Answers {
+		contentBytes = append(contentBytes, answer.ToByteArray()...)
+	}
 
 	return append(headerBytes, contentBytes...)
 }
