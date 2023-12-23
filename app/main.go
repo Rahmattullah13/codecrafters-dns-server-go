@@ -76,7 +76,7 @@ func respondToMessage(message DNSMessage) DNSMessage {
 	domain := nameToDomain(message.Questions[0].Name)
 
 	var responseHeader DNSHeader = DNSHeader{
-		id:               message.Header.id,
+		id:               1234,
 		isReply:          true,
 		opCode:           message.Header.opCode,
 		authoritative:    false,
