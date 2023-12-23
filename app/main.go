@@ -6,16 +6,21 @@ import (
 )
 
 func respondToMessage(message DNSMessage) DNSMessage {
+	var respCode uint8 = 0
+	if message.Header.opCode != 0 {
+		respCode = 4
+	}
+
 	var responseHeader DNSHeader = DNSHeader{
 		id:               message.Header.id,
 		isReply:          true,
-		opCode:           0,
+		opCode:           message.Header.opCode,
 		authoritative:    false,
 		truncated:        false,
-		recursionDesired: false,
+		recursionDesired: message.Header.recursionDesired,
 		recursionAvail:   false,
 		reserved:         0,
-		responseCode:     0,
+		responseCode:     respCode,
 		questionCount:    1,
 		answerCount:      1,
 		authCount:        0,
@@ -64,7 +69,7 @@ func main() {
 		receivedMessage := messageFromBytes(receivedData)
 		messageBack := respondToMessage(receivedMessage)
 
-		fmt.Println(messageBack.Header.String())
+		fmt.Println(receivedMessage.Header.String())
 
 		response := messageBack.ToByteArray()
 		_, err = udpConn.WriteToUDP(response, source)
