@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/binary"
 	"fmt"
-	"strings"
 )
 
 type DNSHeader struct {
@@ -62,7 +61,6 @@ type DNSRecord struct {
 	Data       []byte
 }
 
-
 func answerToQuestion(question DNSQuestion, data []byte, length uint16, ttl uint32) DNSRecord {
 	return DNSRecord{
 		Question:   question,
@@ -72,19 +70,6 @@ func answerToQuestion(question DNSQuestion, data []byte, length uint16, ttl uint
 	}
 }
 
-func domaintoName(domain string) []byte {
-	labels := strings.Split(domain, ".")
-	name := []byte{}
-
-	for _, label := range labels {
-		name = append(name, byte(len(label)))
-		name = append(name, label...)
-	}
-	name = append(name, 0x00)
-
-	return name
-}
-
 type DNSMessage struct {
 	Header    DNSHeader
 	Questions []DNSQuestion
@@ -92,12 +77,47 @@ type DNSMessage struct {
 }
 
 func messageFromBytes(message []byte) DNSMessage {
+	header := headerFromBytes(message[0:12])
+	questions := make([]DNSQuestion, header.questionCount)
+	answers := make([]DNSRecord, header.answerCount)
+
+	messagePointer := 12
+
+	println("message:-------")
+
+	for _, b := range message {
+		println(b)
+	}
+
+	for questionNum := 0; questionNum < int(header.questionCount); questionNum++ {
+		namePointer := messagePointer
+		for message[namePointer] != 0x00 {
+			namePointer++
+		}
+
+		questions[questionNum].Name = make([]byte, namePointer-messagePointer+1)
+		copy(questions[questionNum].Name, message[messagePointer:namePointer+1])
+		messagePointer = namePointer + 2
+
+		questions[questionNum].Type = binary.BigEndian.Uint16(message[messagePointer : messagePointer+2])
+		questions[questionNum].Class = binary.BigEndian.Uint16(message[messagePointer+2 : messagePointer+4])
+
+		messagePointer += 4
+
+		println("Name:")
+
+		for _, b := range questions[questionNum].Name {
+			println(b)
+		}
+	}
+
 	return DNSMessage{
-		Header:    headerFromBytes(message[0:12]),
-		Questions: []DNSQuestion{},
-		Answers:   []DNSRecord{},
+		Header:    header,
+		Questions: questions,
+		Answers:   answers,
 	}
 }
+
 func BoolToInt(b bool) uint16 {
 	if b {
 		return 1
@@ -122,7 +142,7 @@ func (header DNSHeader) _flagsAsInt() uint16 {
 }
 func (header DNSHeader) String() string {
 	return fmt.Sprintf(
-		"Id: %d\nisReply: %d\n opcode: %d\n authoritative: %d\n truncated: %d\n recursionD: %d\n recursionA: %d\n reserved: %d\n responseCode: %d qCount: %d\n ansCount: %d\n authCount: %d\n addCount: %d\n",
+		"Id: %d\nisReply: %d\n opcode: %d\n authoritative: %d\n truncated: %d\n recursionD: %d\n recursionA: %d\n reserved: %d\n responseCode: %d\n qCount: %d\n ansCount: %d\n authCount: %d\n addCount: %d\n",
 		header.id,
 		BoolToInt(header.isReply),
 		header.opCode,
